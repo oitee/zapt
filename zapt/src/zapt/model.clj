@@ -2,14 +2,13 @@
   (:require [zapt.core :as zc]
             [taoensso.carmine :as car :refer (wcar)]))
 
-(defn convert-to-micros
+(defn convert-to-millis
   [sec]
-  (* sec 1000000))
+  (* sec 1000))
 
-(defn get-curr-ts
+(defn get-curr-ts-in-millis
   []
-  (Integer/parseInt (first (zc/wcar*
-           (car/time)))))
+  (inst-ms (java.util.Date.)))
 
 (defn create-store
   "Initialise a store. Accepts an `id` and `window-size`"
@@ -22,23 +21,32 @@
      (when (= res 1)
        id))))
 
-
-
-(defn add-rem-count
-  ([id]
-   (add-rem-count id 5))
-  ([id window-size]
-   "Accepts the `id` of the store and the `window-size` in seconds.
-Adds a new element to the set, removes all elements
-that's outside the window-size and returns the current count
-the store. window-size in seconds"
-   (let [curr-ts (get-curr-ts)
-         w-size-in-micro (convert-to-micros window-size)
-         cut-off-ts (- curr-ts w-size-in-micro)]
-     (last (zc/wcar*
-            (car/zadd id curr-ts curr-ts)
+(defn find-count-after-rem
+  "Returns the size of the store after removing
+  stale elements"
+  [id cut-off-ts]
+  (last (zc/wcar*
             (car/zremrangebyscore id 0 cut-off-ts)
-            (car/zcount id 0 "inf"))))))
+            (car/zcount id 0 "inf"))))
+
+(defn check-size-of-window
+  "After calling `find-count-after-rem`, it
+  returns `true`, if the count of the store is less than
+  `window-limit`. Else, it returns `false`.
+  Also, when the no of elements in the store is within bounds, it
+  asynchronously adds a new element to the store."
+  ([id]
+   (check-size-of-window id 5 50))
+  ([id window-duration-in-sec window-limit]
+   (let [curr-ts (get-curr-ts)
+         w-duration-in-millis (convert-to-millis window-duration-in-sec)
+         cut-off-ts (- curr-ts w-duration-in-millis)
+         curr-window-size (find-count-after-rem id cut-off-ts)]
+     (or (when (< curr-window-size window-limit)
+           (future (zc/wcar*
+                    (car/zadd id curr-ts curr-ts)))
+           true)
+         false))))
 
 
 
