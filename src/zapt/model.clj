@@ -15,7 +15,7 @@
   ([]
    (create-store (rand-int 100000)))
   ([id]
-   (let [curr-ts (get-curr-ts)
+   (let [curr-ts (get-curr-ts-in-millis)
          res (zc/wcar*
               (car/zadd id curr-ts curr-ts))]
      (when (= res 1)
@@ -28,6 +28,20 @@
   (last (zc/wcar*
             (car/zremrangebyscore id 0 cut-off-ts)
             (car/zcount id 0 "inf"))))
+
+(comment (defn show-curr-store*
+           "Helper fn for testing: Shows all
+  elements of given store"
+           [id]
+           (zc/wcar*
+            (car/zrange id 0 100000000000000))))
+
+(comment (defn clear-store*
+           "Helper Function for testing: Clears
+  a given store"
+           [id]
+           (zc/wcar*
+            (car/zremrangebyscore id 0 "inf"))))
 
 (defn check-size-of-window
   "After calling `find-count-after-rem`, it
