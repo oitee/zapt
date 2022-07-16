@@ -8,7 +8,7 @@
 
 (defn get-curr-ts-in-millis
   []
-  (inst-ms (java.util.Date.)))
+  (System/currentTimeMillis))
 
 (defn create-store
   "Initialise a store. Accepts an `id` and `window-size`"
@@ -38,7 +38,7 @@
   ([id]
    (check-size-of-window id 5 50))
   ([id window-duration-in-sec window-limit]
-   (let [curr-ts (get-curr-ts)
+   (let [curr-ts (get-curr-ts-in-millis)
          w-duration-in-millis (convert-to-millis window-duration-in-sec)
          cut-off-ts (- curr-ts w-duration-in-millis)
          curr-window-size (find-count-after-rem id cut-off-ts)]
@@ -47,6 +47,3 @@
                     (car/zadd id curr-ts curr-ts)))
            true)
          false))))
-
-
-
